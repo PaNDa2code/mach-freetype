@@ -60,6 +60,17 @@ pub fn build(b: *std.Build) !void {
             .linkage = .static,
         });
 
+        // if (use_system_zlib)
+        //     mod.addCMacro("FT_CONFIG_OPTION_SYSTEM_ZLIB", "");
+        //
+        // if (enable_brotli) {
+        //     mod.addCMacro("FT_CONFIG_OPTION_USE_BROTLI", "1");
+        //     if (b.lazyDependency("brotli", .{
+        //         .target = target,
+        //         .optimize = optimize,
+        //     })) |dep| lib.linkLibrary(dep.artifact("brotli"));
+        // }
+
         lib.installHeadersDirectory(freetype_upstream.path("include/freetype"), "freetype", .{});
         lib.installHeader(freetype_upstream.path("include/ft2build.h"), "ft2build.h");
         break :lib lib;
@@ -76,100 +87,35 @@ pub fn build(b: *std.Build) !void {
 
         mod.addCSourceFile(.{
             .file = hurfbuzz_upstream.path("src/harfbuzz.cc"),
-            .flags = &.{
-                "-DHAVE_FREETYPE",
-                "-DHB_NO_FEATURES_H",
-                "-std=c++11",
-                "-nostdlib++",
-                "-fno-exceptions",
-                "-fno-rtti",
-                "-fno-threadsafe-statics",
-                "-fvisibility-inlines-hidden",
-            },
+            .flags = hb_flags,
         });
 
-        mod.addIncludePath(hurfbuzz_upstream.path("src"));
-        mod.linkLibrary(freetype_lib);
+        mod.addCMacro("HAVE_FREETYPE", "");
+        mod.addCMacro("HB_NO_FEATURES_H", "");
 
-        break :lib b.addLibrary(.{
+        mod.addIncludePath(hurfbuzz_upstream.path("src"));
+
+        mod.linkLibrary(freetype_lib);
+        mod.addIncludePath(freetype_lib.getEmittedIncludeTree());
+
+        const lib = b.addLibrary(.{
             .name = "harfbuzz",
             .root_module = mod,
             .linkage = .static,
         });
+
+        lib.installHeadersDirectory(hurfbuzz_upstream.path("src/"), "harfbuzz", .{});
+
+        break :lib lib;
     };
 
     freetype_module.linkLibrary(freetype_lib);
     harfbuzz_module.linkLibrary(harfbuzz_lib);
 
-    // const freetype_tests = b.addTest(.{
-    //     .name = "freetype-tests",
-    //     .root_module = b.createModule(.{
-    //         .root_source_file = b.path("src/freetype.zig"),
-    //         .target = target,
-    //         .optimize = optimize,
-    //     }),
-    // });
-    // freetype_tests.root_module.addImport("freetype", freetype_module);
-    //
-    // const harfbuzz_tests = b.addTest(.{
-    //     .name = "harfbuzz-tests",
-    //     .root_module = b.createModule(.{
-    //         .root_source_file = b.path("src/harfbuzz.zig"),
-    //         .target = target,
-    //         .optimize = optimize,
-    //     }),
-    // });
-    //
-    // harfbuzz_tests.root_module.addImport("freetype", freetype_module);
-    // harfbuzz_tests.root_module.addImport("harfbuzz", harfbuzz_module);
-    //
-    // if (b.lazyDependency("freetype", .{
-    //     .target = target,
-    //     .optimize = optimize,
-    //     .use_system_zlib = use_system_zlib,
-    //     .enable_brotli = enable_brotli,
-    // })) |dep| {
-    //     freetype_tests.root_module.linkLibrary(dep.artifact("freetype"));
-    //     freetype_module.linkLibrary(dep.artifact("freetype"));
-    //     harfbuzz_module.linkLibrary(dep.artifact("freetype"));
-    //     harfbuzz_tests.root_module.linkLibrary(dep.artifact("freetype"));
-    // }
-    // if (b.lazyDependency("harfbuzz", .{
-    //     .target = target,
-    //     .optimize = optimize,
-    //     .enable_freetype = true,
-    //     .freetype_use_system_zlib = use_system_zlib,
-    //     .freetype_enable_brotli = enable_brotli,
-    // })) |dep| {
-    //     harfbuzz_module.linkLibrary(dep.artifact("harfbuzz"));
-    //     harfbuzz_tests.root_module.linkLibrary(dep.artifact("harfbuzz"));
-    // }
-    //
-    // const test_step = b.step("test", "Run library tests");
-    // test_step.dependOn(&b.addRunArtifact(freetype_tests).step);
-    // test_step.dependOn(&b.addRunArtifact(harfbuzz_tests).step);
-    //
-    // inline for ([_][]const u8{
-    //     "single-glyph",
-    //     "glyph-to-svg",
-    // }) |example| {
-    //     const example_exe = b.addExecutable(.{
-    //         .name = example,
-    //         .root_source_file = b.path("examples/" ++ example ++ ".zig"),
-    //         .target = target,
-    //         .optimize = optimize,
-    //     });
-    //     example_exe.root_module.addImport("freetype", freetype_module);
-    //     if (b.lazyDependency("font_assets", .{})) |dep| {
-    //         example_exe.root_module.addImport("font-assets", dep.module("font-assets"));
-    //     }
-    //
-    //     const example_run_cmd = b.addRunArtifact(example_exe);
-    //     if (b.args) |args| example_run_cmd.addArgs(args);
-    //
-    //     const example_run_step = b.step("run-" ++ example, "Run '" ++ example ++ "' example");
-    //     example_run_step.dependOn(&example_run_cmd.step);
-    // }
+    freetype_module.addIncludePath(freetype_lib.getEmittedIncludeTree());
+    harfbuzz_module.addIncludePath(harfbuzz_lib.getEmittedIncludeTree());
+
+    harfbuzz_module.addIncludePath(freetype_lib.getEmittedIncludeTree());
 }
 
 const ft2_srcs: []const []const u8 = &.{
@@ -220,4 +166,13 @@ const ft2_flags: []const []const u8 = &.{
     "-DHAVE_UNISTD_H",
     "-ffunction-sections",
     "-fdata-sections",
+};
+
+const hb_flags: []const []const u8 = &.{
+    "-std=c++11",
+    "-nostdlib++",
+    "-fno-exceptions",
+    "-fno-rtti",
+    "-fno-threadsafe-statics",
+    "-fvisibility-inlines-hidden",
 };
