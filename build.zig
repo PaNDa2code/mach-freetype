@@ -3,6 +3,8 @@ const std = @import("std");
 pub fn build(b: *std.Build) !void {
     const optimize = b.standardOptimizeOption(.{});
     const target = b.standardTargetOptions(.{});
+
+    const use_llvm = b.option(bool, "use_llvm", "") orelse false;
     // const use_system_zlib = b.option(bool, "use_system_zlib", "Use system zlib") orelse false;
     // const enable_brotli = b.option(bool, "enable_brotli", "Build brotli") orelse true;
 
@@ -58,6 +60,7 @@ pub fn build(b: *std.Build) !void {
             .name = "freetype",
             .root_module = mod,
             .linkage = .static,
+            .use_llvm = use_llvm,
         });
 
         // if (use_system_zlib)
@@ -102,6 +105,7 @@ pub fn build(b: *std.Build) !void {
             .name = "harfbuzz",
             .root_module = mod,
             .linkage = .static,
+            .use_llvm = use_llvm,
         });
 
         lib.installHeadersDirectory(hurfbuzz_upstream.path("src/"), "harfbuzz", .{});
