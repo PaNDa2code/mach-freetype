@@ -1,5 +1,5 @@
 pub const freetype = @import("freetype");
-pub const c = @cImport(@cInclude("harfbuzz/hb-ft.h"));
+pub const c = @import("c"); // will be provided elsewhere
 
 pub const Shapers = ?[*:null]const ?[*:0]const u8;
 

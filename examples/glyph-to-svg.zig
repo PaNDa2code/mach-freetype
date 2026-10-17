@@ -15,7 +15,7 @@ const OutlinePrinter = struct {
 
     const Self = @This();
 
-    var buf = [_]u8{0} ** (1024 * 10);
+    var buf = [_]u8{0}**(1024 * 10);
     pub fn init(file: std.fs.File) freetype.Error!Self {
         var lib = try freetype.Library.init();
         return Self{

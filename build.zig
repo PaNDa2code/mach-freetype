@@ -8,14 +8,6 @@ pub fn build(b: *std.Build) !void {
     // const use_system_zlib = b.option(bool, "use_system_zlib", "Use system zlib") orelse false;
     // const enable_brotli = b.option(bool, "enable_brotli", "Build brotli") orelse true;
 
-    const freetype_module = b.addModule("mach-freetype", .{
-        .root_source_file = b.path("src/freetype.zig"),
-    });
-    const harfbuzz_module = b.addModule("mach-harfbuzz", .{
-        .root_source_file = b.path("src/harfbuzz.zig"),
-        .imports = &.{.{ .name = "freetype", .module = freetype_module }},
-    });
-
     const freetype_lib = lib: {
         const freetype_upstream = b.dependency("freetype", .{});
 
@@ -79,9 +71,8 @@ pub fn build(b: *std.Build) !void {
         break :lib lib;
     };
 
+    const hurfbuzz_upstream = b.dependency("harfbuzz", .{});
     const harfbuzz_lib = lib: {
-        const hurfbuzz_upstream = b.dependency("harfbuzz", .{});
-
         const mod = b.createModule(.{
             .target = target,
             .optimize = optimize,
@@ -112,6 +103,35 @@ pub fn build(b: *std.Build) !void {
 
         break :lib lib;
     };
+
+    const ft_tc = b.addTranslateC(.{
+        .root_source_file = b.path("build/ft.h"),
+        .target = target,
+        .optimize = optimize,
+    });
+    ft_tc.addIncludePath(freetype_lib.getEmittedIncludeTree());
+    const ft_mod = ft_tc.createModule();
+
+    const hb_tc = b.addTranslateC(.{
+        .root_source_file = b.path("build/hb.h"),
+        .target = target,
+        .optimize = optimize,
+    });
+    hb_tc.addIncludePath(hurfbuzz_upstream.path("src"));
+    hb_tc.addIncludePath(freetype_lib.getEmittedIncludeTree());
+    const hb_mod = hb_tc.createModule();
+
+    const freetype_module = b.addModule("mach-freetype", .{
+        .root_source_file = b.path("src/freetype.zig"),
+        .imports = &.{.{ .name = "c", .module = ft_mod }},
+    });
+    const harfbuzz_module = b.addModule("mach-harfbuzz", .{
+        .root_source_file = b.path("src/harfbuzz.zig"),
+        .imports = &.{
+            .{ .name = "freetype", .module = freetype_module },
+            .{ .name = "c", .module = hb_mod },
+        },
+    });
 
     freetype_module.linkLibrary(freetype_lib);
     harfbuzz_module.linkLibrary(harfbuzz_lib);

@@ -5,6 +5,7 @@
     .paths = .{
         "examples",
         "src",
+        "build",
         "build.zig",
         "build.zig.zon",
         "LICENSE",
