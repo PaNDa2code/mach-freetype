@@ -105,7 +105,7 @@ pub fn build(b: *std.Build) !void {
     };
 
     const ft_tc = b.addTranslateC(.{
-        .root_source_file = b.path("build/ft.h"),
+        .root_source_file = b.path("include/ft.h"),
         .target = target,
         .optimize = optimize,
     });
@@ -113,7 +113,7 @@ pub fn build(b: *std.Build) !void {
     const ft_mod = ft_tc.createModule();
 
     const hb_tc = b.addTranslateC(.{
-        .root_source_file = b.path("build/hb.h"),
+        .root_source_file = b.path("include/hb.h"),
         .target = target,
         .optimize = optimize,
     });
